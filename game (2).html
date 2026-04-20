@@ -1,0 +1,788 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>MTG Arena Lite</title>
+<meta name="description" content="A lightweight Magic: The Gathering single-page game with real cards, deck-building, a shop and a tutorial." />
+<style>
+  *,*::before,*::after{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:#0c0a08;color:#f7efe1;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-tap-highlight-color:transparent;overscroll-behavior:none}
+  body{min-height:100vh;background:
+    radial-gradient(1000px 600px at 10% -10%,rgba(180,120,40,.25),transparent 60%),
+    radial-gradient(900px 500px at 100% 0%,rgba(120,40,180,.25),transparent 60%),
+    linear-gradient(160deg,#1a120a 0%,#0c0a08 60%,#08060a 100%)}
+  .app{max-width:560px;margin:0 auto;padding:14px 14px 100px;min-height:100vh}
+  header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 4px}
+  h1{font-size:20px;margin:0;background:linear-gradient(90deg,#f6c87a,#c98ee0);-webkit-background-clip:text;background-clip:text;color:transparent;letter-spacing:.5px}
+  .coins{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.06);padding:6px 10px;border-radius:999px;border:1px solid rgba(246,200,122,.3);font-weight:700}
+  nav{position:fixed;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(5,1fr);background:rgba(10,8,6,.92);backdrop-filter:blur(10px);border-top:1px solid rgba(246,200,122,.2);z-index:30}
+  nav button{background:none;border:0;color:#cdbfa6;padding:10px 4px;font-size:11px;display:flex;flex-direction:column;align-items:center;gap:4px;font-weight:600}
+  nav button.active{color:#f6c87a}
+  nav .ico{font-size:20px;line-height:1}
+  .view{display:none;animation:fade .25s ease}
+  .view.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .card{background:linear-gradient(160deg,rgba(255,255,255,.06),rgba(255,255,255,.02));border:1px solid rgba(246,200,122,.18);border-radius:16px;padding:14px;margin-bottom:12px}
+  .row{display:flex;gap:10px;align-items:center}
+  .btn{appearance:none;border:0;border-radius:999px;padding:11px 16px;font-weight:700;font-size:14px;color:#1a120a;background:linear-gradient(90deg,#f6c87a,#e3a25a);box-shadow:0 6px 16px rgba(227,162,90,.35);cursor:pointer}
+  .btn.secondary{background:rgba(255,255,255,.08);color:#f7efe1;border:1px solid rgba(246,200,122,.3);box-shadow:none}
+  .btn.danger{background:linear-gradient(90deg,#ef6464,#b03030);color:#fff;box-shadow:0 6px 16px rgba(176,48,48,.35)}
+  .btn.full{width:100%}
+  .btn:disabled{opacity:.5;cursor:not-allowed;filter:grayscale(.4)}
+  .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .pill{display:inline-block;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:700;border:1px solid rgba(255,255,255,.15)}
+  .mana{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;font-size:11px;font-weight:800;color:#1a120a;margin-right:2px;border:1px solid rgba(0,0,0,.25)}
+  .m-W{background:#f8f0d4}
+  .m-U{background:#aedcff;color:#0c2a55}
+  .m-B{background:#3a2c3c;color:#f0e0e8}
+  .m-R{background:#ff9f80;color:#5a1500}
+  .m-G{background:#9be3a8;color:#08401e}
+  .m-C{background:#cfc7b8}
+  .m-X{background:#222;color:#fff}
+  .mtg-card{background:#0d0a08;border-radius:12px;overflow:hidden;border:1px solid rgba(246,200,122,.25);position:relative;display:flex;flex-direction:column}
+  .mtg-card img{width:100%;display:block;background:#1a120a;aspect-ratio:63/88;object-fit:cover}
+  .mtg-card .info{padding:6px 8px}
+  .mtg-card .name{font-size:11px;font-weight:700;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .mtg-card .meta{display:flex;justify-content:space-between;align-items:center;margin-top:3px;font-size:10px;color:#cdbfa6}
+  .mtg-card .qty{position:absolute;top:6px;right:6px;background:rgba(0,0,0,.75);color:#f6c87a;border-radius:999px;font-size:11px;font-weight:800;padding:2px 7px;border:1px solid rgba(246,200,122,.5)}
+  .empty{text-align:center;padding:40px 20px;color:#a89880}
+  .pack{background:linear-gradient(160deg,#3a1d1d,#1a0f0a);border-radius:14px;padding:14px;text-align:center;border:1px solid rgba(246,200,122,.3);position:relative;overflow:hidden}
+  .pack h3{margin:6px 0 4px;font-size:13px}
+  .pack .price{font-weight:800;color:#f6c87a;font-size:14px;margin:6px 0 10px}
+  .pack .emoji{font-size:36px}
+  .battle-area{background:rgba(0,0,0,.35);border-radius:14px;padding:12px;margin-bottom:10px}
+  .life{font-size:32px;font-weight:900;text-align:center;color:#f6c87a;text-shadow:0 0 14px rgba(246,200,122,.4)}
+  .life small{display:block;font-size:11px;color:#cdbfa6;font-weight:600;margin-top:2px}
+  .battle-row{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;min-height:90px;align-items:center}
+  .battle-card{width:60px;height:84px;border-radius:8px;background:#1a120a;border:1px solid rgba(246,200,122,.3);font-size:9px;display:flex;flex-direction:column;justify-content:flex-end;padding:3px;cursor:pointer;position:relative;overflow:hidden}
+  .battle-card img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .battle-card .label{position:relative;z-index:1;background:rgba(0,0,0,.7);padding:2px;border-radius:3px;text-align:center;font-weight:700}
+  .battle-card.tapped{transform:rotate(90deg);opacity:.7}
+  .battle-card.attacking{outline:2px solid #ff6464;box-shadow:0 0 12px rgba(255,100,100,.6)}
+  .battle-card.blocking{outline:2px solid #64aaff}
+  .battle-card.selected{outline:2px solid #f6c87a;transform:translateY(-4px)}
+  .log{background:rgba(0,0,0,.4);border-radius:10px;padding:8px 10px;font-size:12px;max-height:120px;overflow-y:auto;font-family:ui-monospace,Menlo,monospace;line-height:1.5}
+  .log p{margin:0 0 2px}
+  .log .me{color:#9be3a8}.log .opp{color:#ff9f80}.log .sys{color:#cdbfa6;font-style:italic}
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:50;padding:20px}
+  .modal.open{display:flex}
+  .modal-content{background:#1a120a;border:1px solid rgba(246,200,122,.4);border-radius:18px;padding:18px;max-width:420px;width:100%;max-height:85vh;overflow-y:auto}
+  .modal-content h2{margin:0 0 8px;color:#f6c87a}
+  .toast{position:fixed;left:50%;top:18px;transform:translate(-50%,-30px);background:#1a120a;border:1px solid rgba(246,200,122,.4);color:#f7efe1;padding:10px 16px;border-radius:999px;font-weight:700;opacity:0;transition:all .3s;z-index:60;font-size:13px;pointer-events:none}
+  .toast.show{transform:translate(-50%,0);opacity:1}
+  .filter-bar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+  .filter-bar button{flex:1;min-width:46px;padding:7px;font-size:11px;border-radius:8px;border:1px solid rgba(246,200,122,.25);background:rgba(255,255,255,.04);color:#cdbfa6;font-weight:700}
+  .filter-bar button.active{background:linear-gradient(90deg,#f6c87a,#e3a25a);color:#1a120a;border-color:transparent}
+  .deck-stat{display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px dashed rgba(246,200,122,.15)}
+  .phase{text-align:center;font-weight:700;color:#f6c87a;text-transform:uppercase;letter-spacing:1px;font-size:11px;padding:6px;background:rgba(246,200,122,.1);border-radius:8px;margin-bottom:8px}
+  #loadingOverlay{position:fixed;inset:0;background:rgba(8,6,4,.92);display:none;align-items:center;justify-content:center;z-index:100;flex-direction:column;gap:14px;backdrop-filter:blur(6px)}
+  #loadingOverlay.show{display:flex}
+  .spinner{width:48px;height:48px;border:4px solid rgba(246,200,122,.2);border-top-color:#f6c87a;border-radius:50%;animation:spin 1s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  #loadingText{color:#f6c87a;font-weight:700;font-size:14px}
+  .tutorial-overlay{position:fixed;inset:0;background:rgba(0,0,0,.78);display:none;align-items:flex-end;justify-content:center;z-index:80;padding:20px}
+  .tutorial-overlay.show{display:flex}
+  .tutorial-box{background:linear-gradient(160deg,#2a1d10,#1a120a);border:1px solid rgba(246,200,122,.5);border-radius:18px;padding:18px;max-width:480px;width:100%;box-shadow:0 -10px 40px rgba(0,0,0,.6)}
+  .tutorial-box h3{margin:0 0 8px;color:#f6c87a;font-size:16px}
+  .tutorial-box p{margin:0 0 12px;font-size:13px;line-height:1.5;color:#e8dcc4}
+  .tutorial-step{font-size:11px;color:#a89880;margin-bottom:6px;font-weight:700;letter-spacing:.5px}
+  .mana-pool{display:flex;gap:4px;justify-content:center;margin:6px 0;flex-wrap:wrap}
+  .mana-pool .mp{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;font-weight:800;font-size:12px;border:1px solid rgba(0,0,0,.4)}
+</style>
+</head>
+<body>
+<div id="app" class="app">
+  <header>
+    <h1>🜲 MTG Arena Lite</h1>
+    <div class="coins">💰 <span id="coins">0</span></div>
+  </header>
+
+  <section id="view-home" class="view active">
+    <div class="card">
+      <h2 style="margin:0 0 6px">Welcome, Planeswalker</h2>
+      <p style="margin:0 0 12px;color:#cdbfa6;font-size:13px">Build decks with real Magic cards, open booster packs, and battle the AI in a streamlined ruleset.</p>
+      <button class="btn full" onclick="startTutorial()">🎓 Start Tutorial</button>
+    </div>
+    <div class="grid">
+      <div class="card" style="text-align:center"><div style="font-size:32px">🎴</div><div style="font-weight:700;margin:6px 0">Collection</div><div style="font-size:11px;color:#cdbfa6" id="homeCollection">0 cards</div></div>
+      <div class="card" style="text-align:center"><div style="font-size:32px">📚</div><div style="font-weight:700;margin:6px 0">Decks</div><div style="font-size:11px;color:#cdbfa6" id="homeDecks">0 saved</div></div>
+    </div>
+    <div class="card">
+      <h3 style="margin:0 0 8px">Daily Reward</h3>
+      <button id="dailyBtn" class="btn full" onclick="claimDaily()">Claim 200 💰</button>
+    </div>
+  </section>
+
+  <section id="view-shop" class="view">
+    <h2 style="margin:6px 0 12px">Booster Packs</h2>
+    <div class="grid" id="shopGrid"></div>
+  </section>
+
+  <section id="view-collection" class="view">
+    <h2 style="margin:6px 0 8px">Collection <small style="color:#cdbfa6;font-weight:400" id="collCount"></small></h2>
+    <div class="filter-bar" id="collFilters"></div>
+    <div class="grid3" id="collGrid"></div>
+  </section>
+
+  <section id="view-decks" class="view">
+    <h2 style="margin:6px 0 12px">Decks</h2>
+    <div class="card">
+      <button class="btn full" onclick="openDeckBuilder()">➕ New Deck</button>
+      <button class="btn full secondary" style="margin-top:8px" onclick="autoBuildDeck()">⚡ Auto-build a Deck</button>
+    </div>
+    <div id="decksList"></div>
+  </section>
+
+  <section id="view-battle" class="view">
+    <div id="battleHome">
+      <h2 style="margin:6px 0 12px">Battle</h2>
+      <div class="card">
+        <p style="margin:0 0 10px;font-size:13px;color:#cdbfa6">Pick a deck and challenge the AI Planeswalker.</p>
+        <div id="battleDeckPicker"></div>
+      </div>
+    </div>
+    <div id="battleArena" style="display:none"></div>
+  </section>
+</div>
+
+<nav>
+  <button data-view="home" class="active" onclick="setView('home')"><span class="ico">🏠</span>Home</button>
+  <button data-view="shop" onclick="setView('shop')"><span class="ico">🛒</span>Shop</button>
+  <button data-view="collection" onclick="setView('collection')"><span class="ico">🎴</span>Cards</button>
+  <button data-view="decks" onclick="setView('decks')"><span class="ico">📚</span>Decks</button>
+  <button data-view="battle" onclick="setView('battle')"><span class="ico">⚔️</span>Battle</button>
+</nav>
+
+<div id="modal" class="modal" onclick="if(event.target===this)closeModal()"><div class="modal-content" id="modalBody"></div></div>
+<div id="toast" class="toast"></div>
+<div id="loadingOverlay"><div class="spinner"></div><div id="loadingText">Loading…</div></div>
+<div id="tutorial" class="tutorial-overlay" onclick="if(event.target===this)nextTutorial()"><div class="tutorial-box"><div class="tutorial-step" id="tutStep">Step 1 / 8</div><h3 id="tutTitle"></h3><p id="tutText"></p><div style="display:flex;gap:8px"><button class="btn secondary" onclick="closeTutorial()">Skip</button><button class="btn" style="flex:1" id="tutNext" onclick="nextTutorial()">Next →</button></div></div></div>
+
+<script>
+/* ---------- STATE ---------- */
+const STORAGE = 'mtg-arena-lite-v1';
+const PACK_SETS = [
+  { code:'dmu', name:'Dominaria United', price:150, emoji:'⚔️' },
+  { code:'bro', name:"The Brothers' War", price:160, emoji:'⚙️' },
+  { code:'one', name:'Phyrexia: All Will Be One', price:170, emoji:'🜲' },
+  { code:'mom', name:'March of the Machine', price:180, emoji:'🤖' },
+  { code:'woe', name:'Wilds of Eldraine', price:170, emoji:'🍂' },
+  { code:'lci', name:'Lost Caverns of Ixalan', price:180, emoji:'🌋' },
+];
+const COLOR_NAMES = { W:'White', U:'Blue', B:'Black', R:'Red', G:'Green', C:'Colorless' };
+const FALLBACK_CARDS = buildFallbackCards();
+
+let state = {
+  coins: 1000,
+  collection: {}, // id -> count
+  decks: [], // {id,name,cards:[id...]}
+  lastDaily: 0,
+  cardsDb: {}, // id -> card
+  setCache: {}, // setCode -> card[]
+  loadingSets: {},
+};
+
+function load(){
+  try{
+    const s = JSON.parse(localStorage.getItem(STORAGE)||'null');
+    if(s) state = {...state, ...s, cardsDb: {...FALLBACK_CARDS, ...(s.cardsDb||{})}};
+    else state.cardsDb = {...FALLBACK_CARDS};
+  }catch(e){ state.cardsDb = {...FALLBACK_CARDS}; }
+}
+function save(){
+  localStorage.setItem(STORAGE, JSON.stringify({
+    coins: state.coins, collection: state.collection, decks: state.decks,
+    lastDaily: state.lastDaily, cardsDb: state.cardsDb,
+  }));
+}
+
+/* ---------- HELPERS ---------- */
+const $ = id => document.getElementById(id);
+const nextFrame = () => new Promise(r => requestAnimationFrame(()=>r()));
+function showLoading(t='Loading…'){ $('loadingText').textContent=t; $('loadingOverlay').classList.add('show'); }
+function hideLoading(){ $('loadingOverlay').classList.remove('show'); }
+function toast(msg){ const t=$('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(window._tt); window._tt=setTimeout(()=>t.classList.remove('show'),1800); }
+function openModal(html){ $('modalBody').innerHTML=html; $('modal').classList.add('open'); }
+function closeModal(){ $('modal').classList.remove('open'); }
+function uid(){ return Math.random().toString(36).slice(2,10); }
+
+function setView(v){
+  document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
+  $('view-'+v).classList.add('active');
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active', b.dataset.view===v));
+  if(v==='shop') renderShop();
+  if(v==='collection') renderCollection();
+  if(v==='decks') renderDecks();
+  if(v==='battle') renderBattleHome();
+  if(v==='home') renderHome();
+}
+
+function renderHome(){
+  $('coins').textContent = state.coins;
+  $('homeCollection').textContent = totalCards()+' cards';
+  $('homeDecks').textContent = state.decks.length+' saved';
+  const since = Date.now() - state.lastDaily;
+  if(since < 24*3600*1000){ $('dailyBtn').disabled = true; $('dailyBtn').textContent = 'Come back tomorrow'; }
+  else { $('dailyBtn').disabled = false; $('dailyBtn').textContent = 'Claim 200 💰'; }
+}
+function totalCards(){ return Object.values(state.collection).reduce((a,b)=>a+b,0); }
+function claimDaily(){
+  const since = Date.now() - state.lastDaily;
+  if(since < 24*3600*1000){ toast('Already claimed today'); return; }
+  state.coins += 200; state.lastDaily = Date.now(); save(); renderHome(); toast('+200 💰');
+}
+
+/* ---------- CARD DATA ---------- */
+function buildFallbackCards(){
+  const db = {};
+  const lands = [
+    ['Plains','W','Land','plains'],['Island','U','Land','island'],['Swamp','B','Land','swamp'],['Mountain','R','Land','mountain'],['Forest','G','Land','forest'],
+  ];
+  lands.forEach(([name,c,type,art],i)=>{ db['fb-'+name.toLowerCase()] = mkCard('fb-'+name.toLowerCase(), name, '', type, c, 'common', null, art); });
+  const creatures = [
+    // White
+    ['Savannah Lions','W','Creature — Cat',1,'2/1','common',2,1],
+    ['Serra Angel','3WW','Creature — Angel',5,'4/4 flying, vigilance','uncommon',4,4],
+    ['Wrath of God','2WW','Sorcery',4,'Destroy all creatures','rare',0,0],
+    // Blue
+    ['Counterspell','UU','Instant',2,'Counter target spell','common',0,0],
+    ['Air Elemental','3UU','Creature — Elemental',5,'4/4 flying','uncommon',4,4],
+    ['Mind Sculptor','3U','Creature — Wizard',4,'2/3 draw a card on attack','rare',2,3],
+    // Black
+    ['Dark Ritual','B','Instant',1,'Add BBB','common',0,0],
+    ['Hypnotic Specter','1BB','Creature — Specter',3,'2/2 flying, discard','uncommon',2,2],
+    ['Vampire Nighthawk','1BB','Creature — Vampire',3,'2/3 flying, lifelink','uncommon',2,3],
+    // Red
+    ['Lightning Bolt','R','Instant',1,'Deal 3 damage','common',0,0],
+    ['Goblin Guide','R','Creature — Goblin',1,'2/2 haste','uncommon',2,2],
+    ['Shivan Dragon','4RR','Creature — Dragon',6,'5/5 flying','rare',5,5],
+    // Green
+    ['Llanowar Elves','G','Creature — Elf Druid',1,'1/1 add G','common',1,1],
+    ['Giant Growth','G','Instant',1,'+3/+3 until end of turn','common',0,0],
+    ['Tarmogoyf','1G','Creature — Lhurgoyf',2,'*/1+* big body','rare',3,4],
+    ['Craterhoof Behemoth','5GGG','Creature — Beast',8,'5/5 trample, anthem','mythic',5,5],
+  ];
+  creatures.forEach(([name,cost,type,cmc,text,rarity,p,t])=>{
+    const c = colorFromCost(cost);
+    db['fb-'+slug(name)] = mkCard('fb-'+slug(name), name, cost, type, c, rarity, {power:p,toughness:t,text}, null);
+  });
+  return db;
+}
+function slug(s){ return s.toLowerCase().replace(/[^a-z0-9]+/g,'-'); }
+function colorFromCost(cost){
+  const m = (cost||'').match(/[WUBRG]/g);
+  if(!m) return 'C';
+  const set = [...new Set(m)];
+  return set.length===1?set[0]:'M'; // M = multicolor
+}
+function mkCard(id,name,cost,type,color,rarity,extra,fallbackArt){
+  return { id, name, mana_cost: cost||'', type_line: type, colors: color==='M'?['M']:color==='C'?[]:[color],
+    rarity, oracle_text: extra?.text||'', power: extra?.power||null, toughness: extra?.toughness||null,
+    image: null, fallbackArt: fallbackArt||null, cmc: cmcFromCost(cost), set:'fb' };
+}
+function cmcFromCost(cost){
+  if(!cost) return 0;
+  let n = 0;
+  cost.replace(/\{?(\d+)\}?/g, (_,d)=>{ n+=parseInt(d); return ''; });
+  cost.replace(/[WUBRG]/g, ()=>{ n+=1; return ''; });
+  return n;
+}
+function isLand(c){ return /Land/.test(c.type_line); }
+function isCreature(c){ return /Creature/.test(c.type_line); }
+function cardColor(c){
+  if(isLand(c)){
+    const map = {Plains:'W',Island:'U',Swamp:'B',Mountain:'R',Forest:'G'};
+    return map[c.name] || 'C';
+  }
+  if(c.colors && c.colors.length===1) return c.colors[0];
+  if(c.colors && c.colors.length>1) return 'M';
+  return 'C';
+}
+
+async function fetchSet(code){
+  if(state.setCache[code]) return state.setCache[code];
+  if(state.loadingSets[code]) return state.loadingSets[code];
+  state.loadingSets[code] = (async()=>{
+    try{
+      const url = `https://api.scryfall.com/cards/search?q=set%3A${code}+game%3Apaper&unique=cards&order=cmc`;
+      const r = await fetch(url);
+      if(!r.ok) throw new Error('http '+r.status);
+      const j = await r.json();
+      const cards = (j.data||[]).filter(c=>c.image_uris && !c.layout?.includes('token')).map(c=>({
+        id:'sf-'+c.id, name:c.name, mana_cost:c.mana_cost||'', type_line:c.type_line||'',
+        colors:c.colors||[], rarity:c.rarity||'common', oracle_text:c.oracle_text||'',
+        power:c.power||null, toughness:c.toughness||null,
+        image:c.image_uris.normal||c.image_uris.small, cmc:c.cmc||0, set:code,
+      }));
+      cards.forEach(c=>{ state.cardsDb[c.id]=c; });
+      state.setCache[code]=cards; save();
+      return cards;
+    }catch(e){
+      console.warn('Failed to load set',code,e);
+      return [];
+    }finally{ delete state.loadingSets[code]; }
+  })();
+  return state.loadingSets[code];
+}
+
+/* ---------- SHOP ---------- */
+function renderShop(){
+  const g = $('shopGrid'); g.innerHTML='';
+  PACK_SETS.forEach(p=>{
+    const loaded = state.setCache[p.code];
+    const loading = state.loadingSets[p.code];
+    const sub = loaded ? `${loaded.length} cards` : (loading ? '• loading' : 'tap to load');
+    const div = document.createElement('div');
+    div.className='pack';
+    div.innerHTML = `<div class="emoji">${p.emoji}</div><h3>${p.name}</h3><div style="font-size:11px;color:#cdbfa6">${sub}</div><div class="price">${p.price} 💰</div><button class="btn full" onclick="buyPack('${p.code}')">Open Pack</button>`;
+    g.appendChild(div);
+    if(!loaded && !loading) fetchSet(p.code).then(()=>renderShop());
+  });
+}
+async function buyPack(code){
+  const pack = PACK_SETS.find(p=>p.code===code);
+  if(state.coins < pack.price){ toast('Not enough coins'); return; }
+  showLoading('Opening pack…');
+  let cards = state.setCache[code];
+  if(!cards) cards = await fetchSet(code);
+  if(!cards || cards.length<10){ hideLoading(); toast('Pack unavailable, try later'); return; }
+  state.coins -= pack.price;
+  // 15-card boosters: 1 rare/mythic, 3 uncommon, 10 common, 1 land
+  const opened = [];
+  const pick = (pool,n)=>{ const out=[]; for(let i=0;i<n && pool.length;i++){ out.push(pool[Math.floor(Math.random()*pool.length)]); } return out; };
+  const rares = cards.filter(c=>c.rarity==='rare'||c.rarity==='mythic');
+  const uncs = cards.filter(c=>c.rarity==='uncommon');
+  const coms = cards.filter(c=>c.rarity==='common' && !/Land/.test(c.type_line));
+  const lands = cards.filter(c=>/Land/.test(c.type_line));
+  opened.push(...pick(rares.length?rares:cards,1));
+  opened.push(...pick(uncs.length?uncs:coms,3));
+  opened.push(...pick(coms,10));
+  opened.push(...pick(lands.length?lands:cards,1));
+  opened.forEach(c=>{ state.collection[c.id]=(state.collection[c.id]||0)+1; });
+  save(); hideLoading();
+  showPackResult(opened);
+}
+function showPackResult(cards){
+  const html = `<h2>✨ Pack Opened</h2><div class="grid3" style="margin-top:12px">${cards.map(c=>cardHtml(c,1,false)).join('')}</div><button class="btn full" style="margin-top:14px" onclick="closeModal();renderHome()">Awesome!</button>`;
+  openModal(html);
+}
+
+/* ---------- COLLECTION ---------- */
+let collFilter = 'all';
+function renderCollection(){
+  const fb = $('collFilters'); fb.innerHTML='';
+  ['all','W','U','B','R','G','C','M'].forEach(f=>{
+    const b=document.createElement('button');
+    b.textContent = f==='all'?'All':(f==='M'?'Multi':(COLOR_NAMES[f]||f));
+    if(collFilter===f) b.classList.add('active');
+    b.onclick=()=>{ collFilter=f; renderCollection(); };
+    fb.appendChild(b);
+  });
+  const ids = Object.keys(state.collection).filter(id=>state.collection[id]>0);
+  const cards = ids.map(id=>state.cardsDb[id]).filter(Boolean);
+  const filtered = collFilter==='all'?cards:cards.filter(c=>cardColor(c)===collFilter);
+  $('collCount').textContent = `(${cards.length} unique, ${totalCards()} total)`;
+  const g = $('collGrid');
+  if(!filtered.length){ g.innerHTML='<div class="empty" style="grid-column:1/-1">No cards yet — open a pack!</div>'; return; }
+  g.innerHTML = filtered.sort((a,b)=>a.cmc-b.cmc||a.name.localeCompare(b.name)).map(c=>cardHtml(c,state.collection[c.id],true)).join('');
+}
+function cardHtml(c,qty,showQty){
+  const art = c.image
+    ? `<img src="${c.image}" alt="${c.name}" loading="lazy" />`
+    : `<div style="aspect-ratio:63/88;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,${landBg(c)});font-size:28px">${landEmoji(c)}</div>`;
+  return `<div class="mtg-card">${qty>1&&showQty?`<div class="qty">×${qty}</div>`:''}${art}<div class="info"><div class="name">${c.name}</div><div class="meta"><span>${manaIcons(c.mana_cost)}</span><span>${shortType(c.type_line)}</span></div></div></div>`;
+}
+function landBg(c){ const m={Plains:'#f8f0d4,#c9b97a',Island:'#aedcff,#3a78b4',Swamp:'#3a2c3c,#0a0608',Mountain:'#ff9f80,#7a2810',Forest:'#9be3a8,#1a4020'}; return m[c.name]||'#444,#222'; }
+function landEmoji(c){ const m={Plains:'☀️',Island:'🌊',Swamp:'💀',Mountain:'⛰️',Forest:'🌲'}; return m[c.name]||'🃏'; }
+function shortType(t){ return (t||'').split('—')[0].trim().split(' ').pop(); }
+function manaIcons(cost){
+  if(!cost) return '';
+  return cost.replace(/\{([^}]+)\}/g,(_,s)=>{
+    if(/^\d+$/.test(s)) return `<span class="mana m-C">${s}</span>`;
+    if('WUBRG'.includes(s)) return `<span class="mana m-${s}">${s}</span>`;
+    return `<span class="mana m-X">${s}</span>`;
+  }) || cost.split('').map(ch=>'WUBRG'.includes(ch)?`<span class="mana m-${ch}">${ch}</span>`:(/\d/.test(ch)?`<span class="mana m-C">${ch}</span>`:'')).join('');
+}
+
+/* ---------- DECKS ---------- */
+function renderDecks(){
+  const wrap = $('decksList'); wrap.innerHTML='';
+  if(!state.decks.length){ wrap.innerHTML='<div class="empty">No decks yet</div>'; return; }
+  state.decks.forEach(d=>{
+    const cards = d.cards.map(id=>state.cardsDb[id]).filter(Boolean);
+    const colors = [...new Set(cards.map(cardColor))].filter(c=>c!=='C').slice(0,5);
+    const div=document.createElement('div'); div.className='card';
+    div.innerHTML=`<div class="row" style="justify-content:space-between"><div><div style="font-weight:700">${d.name}</div><div style="font-size:11px;color:#cdbfa6">${d.cards.length} cards · ${colors.map(c=>`<span class="mana m-${c}">${c}</span>`).join('')}</div></div><div style="display:flex;gap:6px"><button class="btn secondary" onclick="openDeckBuilder('${d.id}')">Edit</button><button class="btn danger" onclick="deleteDeck('${d.id}')">✕</button></div></div>`;
+    wrap.appendChild(div);
+  });
+}
+function deleteDeck(id){ state.decks = state.decks.filter(d=>d.id!==id); save(); renderDecks(); }
+
+function openDeckBuilder(id){
+  let deck = id ? state.decks.find(d=>d.id===id) : { id:uid(), name:'New Deck', cards:[] };
+  if(!id) state.decks.push(deck);
+  showDeckBuilder(deck);
+}
+function showDeckBuilder(deck){
+  const counts = {};
+  deck.cards.forEach(cid=>{ counts[cid]=(counts[cid]||0)+1; });
+  const owned = Object.keys(state.collection).filter(cid=>state.collection[cid]>0).map(cid=>state.cardsDb[cid]).filter(Boolean);
+  owned.sort((a,b)=>a.cmc-b.cmc||a.name.localeCompare(b.name));
+  const total = deck.cards.length;
+  const lands = deck.cards.filter(cid=>{ const c=state.cardsDb[cid]; return c && isLand(c); }).length;
+  const cre = deck.cards.filter(cid=>{ const c=state.cardsDb[cid]; return c && isCreature(c); }).length;
+  const html = `
+    <h2>${deck.name}</h2>
+    <input id="deckNameInp" value="${deck.name.replace(/"/g,'&quot;')}" style="width:100%;padding:8px;border-radius:8px;border:1px solid rgba(246,200,122,.3);background:rgba(0,0,0,.3);color:#f7efe1;margin-bottom:10px" onchange="renameDeck('${deck.id}',this.value)" />
+    <div class="card" style="padding:10px">
+      <div class="deck-stat"><span>Total</span><b>${total} / 60</b></div>
+      <div class="deck-stat"><span>Lands</span><b>${lands}</b></div>
+      <div class="deck-stat"><span>Creatures</span><b>${cre}</b></div>
+    </div>
+    <h3 style="margin:14px 0 8px">In deck</h3>
+    <div class="grid3" id="deckIn">${Object.keys(counts).map(cid=>{ const c=state.cardsDb[cid]; return c?`<div onclick="removeFromDeck('${deck.id}','${cid}')">${cardHtml(c,counts[cid],true)}</div>`:''; }).join('')||'<div class="empty" style="grid-column:1/-1">Empty</div>'}</div>
+    <h3 style="margin:14px 0 8px">Your collection</h3>
+    <div class="grid3">${owned.map(c=>`<div onclick="addToDeck('${deck.id}','${c.id}')" style="position:relative">${cardHtml(c,state.collection[c.id],true)}</div>`).join('')}</div>
+    <button class="btn full" style="margin-top:14px" onclick="closeModal();save();renderDecks()">Done</button>
+  `;
+  openModal(html);
+}
+function renameDeck(id,name){ const d=state.decks.find(x=>x.id===id); if(d){ d.name=name||'Deck'; save(); } }
+function addToDeck(deckId,cardId){
+  const d = state.decks.find(x=>x.id===deckId); if(!d) return;
+  if(d.cards.length>=60){ toast('Deck is full (60)'); return; }
+  const c = state.cardsDb[cardId];
+  const limit = isLand(c)?60:4;
+  const inDeck = d.cards.filter(x=>x===cardId).length;
+  if(inDeck>=limit){ toast('Max '+limit+' copies'); return; }
+  const owned = state.collection[cardId]||0;
+  if(inDeck>=owned){ toast('You only own '+owned); return; }
+  d.cards.push(cardId); save(); showDeckBuilder(d);
+}
+function removeFromDeck(deckId,cardId){
+  const d = state.decks.find(x=>x.id===deckId); if(!d) return;
+  const i = d.cards.lastIndexOf(cardId);
+  if(i>=0) d.cards.splice(i,1);
+  save(); showDeckBuilder(d);
+}
+
+async function autoBuildDeck(){
+  showLoading('Building deck…');
+  await nextFrame();
+  try{
+    // Pick the most-owned non-land color
+    const owned = Object.keys(state.collection).filter(id=>state.collection[id]>0).map(id=>state.cardsDb[id]).filter(Boolean);
+    if(owned.length<10){ hideLoading(); toast('Open more packs first!'); return; }
+    const colorCount = {W:0,U:0,B:0,R:0,G:0};
+    owned.forEach(c=>{ if(isLand(c))return; const col=cardColor(c); if(colorCount[col]!=null) colorCount[col]+=state.collection[c.id]; });
+    const main = Object.entries(colorCount).sort((a,b)=>b[1]-a[1])[0][0];
+    await nextFrame();
+    const playable = owned.filter(c=>!isLand(c) && (cardColor(c)===main || cardColor(c)==='C'));
+    playable.sort((a,b)=>(state.collection[b.id]-state.collection[a.id]) || (a.cmc-b.cmc));
+    const deck = { id:uid(), name:`Auto ${COLOR_NAMES[main]||main} Deck`, cards:[] };
+    let guard = 0;
+    for(const c of playable){
+      if(deck.cards.length>=36) break;
+      const limit = 4;
+      const own = state.collection[c.id]||0;
+      const add = Math.min(limit, own);
+      for(let i=0;i<add && deck.cards.length<36;i++) deck.cards.push(c.id);
+      if(++guard>500) break;
+    }
+    await nextFrame();
+    // Add 24 lands of the main color (use owned basics if any, else fallback)
+    const landName = ({W:'Plains',U:'Island',B:'Swamp',R:'Mountain',G:'Forest'})[main];
+    let landId = Object.keys(state.cardsDb).find(id=>{ const c=state.cardsDb[id]; return c && c.name===landName && /Land/.test(c.type_line); });
+    if(!landId){ landId = 'fb-'+landName.toLowerCase(); state.cardsDb[landId] = state.cardsDb[landId] || FALLBACK_CARDS[landId]; }
+    // Grant lands so deck is playable
+    state.collection[landId] = Math.max(state.collection[landId]||0, 24);
+    for(let i=0;i<24;i++) deck.cards.push(landId);
+    state.decks.push(deck); save();
+    hideLoading(); toast('Built '+deck.name); renderDecks();
+  }catch(e){ console.error(e); hideLoading(); toast('Auto-build failed'); }
+}
+
+/* ---------- BATTLE ---------- */
+let battle = null;
+function renderBattleHome(){
+  $('battleHome').style.display='block'; $('battleArena').style.display='none';
+  const w = $('battleDeckPicker'); w.innerHTML='';
+  const valid = state.decks.filter(d=>d.cards.length>=40);
+  if(!valid.length){ w.innerHTML='<div class="empty">Build a deck (40+ cards) first</div>'; return; }
+  valid.forEach(d=>{
+    const b=document.createElement('button'); b.className='btn full'; b.style.marginBottom='8px';
+    b.textContent='⚔️ '+d.name+' ('+d.cards.length+')';
+    b.onclick=()=>startBattle(d);
+    w.appendChild(b);
+  });
+}
+function startBattle(deck){
+  const playerCards = deck.cards.map(id=>state.cardsDb[id]).filter(Boolean);
+  // Build opponent deck from a curated AI pool (20 creatures + 20 lands)
+  const aiCreatures = ['Savannah Lions','Goblin Guide','Llanowar Elves','Hypnotic Specter','Vampire Nighthawk','Air Elemental','Serra Angel','Shivan Dragon','Tarmogoyf']
+    .map(n=>FALLBACK_CARDS['fb-'+slug(n)]).filter(Boolean);
+  const aiDeck = [];
+  for(let i=0;i<20;i++) aiDeck.push({...aiCreatures[i%aiCreatures.length]});
+  ['Plains','Island','Swamp','Mountain','Forest'].forEach(l=>{ for(let i=0;i<4;i++) aiDeck.push({...FALLBACK_CARDS['fb-'+l.toLowerCase()]}); });
+  battle = {
+    turn:1, phase:'main', activePlayer:'p',
+    p:{ life:20, library:shuffle([...playerCards]).map(c=>({...c,uid:uid()})), hand:[], battlefield:[], graveyard:[], landsPlayed:0, mana:{W:0,U:0,B:0,R:0,G:0,C:0} },
+    o:{ life:20, library:shuffle(aiDeck).map(c=>({...c,uid:uid()})), hand:[], battlefield:[], graveyard:[], landsPlayed:0, mana:{W:0,U:0,B:0,R:0,G:0,C:0} },
+    log: [], selected:null, attackers:[], blockers:{}, blockingFor:null,
+  };
+  for(let i=0;i<7;i++){ drawCard('p'); drawCard('o'); }
+  pushLog('sys','Game start. You go first.');
+  $('battleHome').style.display='none'; $('battleArena').style.display='block';
+  renderBattle();
+}
+function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+function drawCard(p){ const s=battle[p]; if(!s.library.length){ s.life-=2; pushLog('sys',(p==='p'?'You':'Opponent')+' takes 2 from empty library'); return; } s.hand.push(s.library.pop()); }
+function pushLog(cls,msg){ battle.log.push({cls,msg}); if(battle.log.length>30) battle.log.shift(); }
+function manaTotal(p){ const m=battle[p].mana; return m.W+m.U+m.B+m.R+m.G+m.C; }
+function untapAll(p){ battle[p].battlefield.forEach(c=>c.tapped=false); battle[p].mana={W:0,U:0,B:0,R:0,G:0,C:0}; battle[p].landsPlayed=0; }
+
+function renderBattle(){
+  const a=$('battleArena');
+  const me=battle.p, op=battle.o;
+  const phaseLabel = { main:'Main Phase', attack:'Declare Attackers', block:'Declare Blockers', damage:'Combat Damage', end:'End Step' }[battle.phase] || battle.phase;
+  a.innerHTML = `
+    <div class="battle-area">
+      <div class="row" style="justify-content:space-between"><div class="life">${op.life}<small>Opponent · Hand ${op.hand.length} · Lib ${op.library.length}</small></div><button class="btn danger" onclick="quitBattle()">Quit</button></div>
+      <div class="battle-row" id="opField">${op.battlefield.map(c=>battleCard(c,'o')).join('')||'<span style="color:#a89880;font-size:11px">no creatures</span>'}</div>
+    </div>
+    <div class="phase">Turn ${battle.turn} · ${battle.activePlayer==='p'?'Your':'Opponent'} ${phaseLabel}</div>
+    <div class="battle-area">
+      <div class="battle-row" id="myField">${me.battlefield.map(c=>battleCard(c,'p')).join('')||'<span style="color:#a89880;font-size:11px">no creatures</span>'}</div>
+      <div class="mana-pool">${['W','U','B','R','G','C'].filter(k=>me.mana[k]>0).map(k=>`<span class="mp m-${k}">${me.mana[k]}${k}</span>`).join('')||'<span style="color:#a89880;font-size:11px">no mana</span>'}</div>
+      <div class="life">${me.life}<small>You · Lib ${me.library.length}</small></div>
+    </div>
+    <div class="battle-area">
+      <div style="font-size:11px;color:#a89880;margin-bottom:6px">Your hand (${me.hand.length})</div>
+      <div class="battle-row" style="justify-content:flex-start;overflow-x:auto;flex-wrap:nowrap">${me.hand.map(c=>handCard(c)).join('')||'<span style="color:#a89880;font-size:11px">empty</span>'}</div>
+    </div>
+    <div class="row" style="gap:6px;margin-bottom:10px">${actionButtons()}</div>
+    <div class="log">${battle.log.slice(-12).map(l=>`<p class="${l.cls}">${l.msg}</p>`).join('')}</div>
+  `;
+}
+function battleCard(c,owner){
+  const tap = c.tapped?'tapped':'';
+  const atk = battle.attackers.includes(c.uid)?'attacking':'';
+  const blk = battle.blockers && Object.values(battle.blockers).flat().includes(c.uid)?'blocking':'';
+  const sel = battle.selected===c.uid?'selected':'';
+  const click = owner==='p'? `onclick="tapCreature('${c.uid}')"` : `onclick="targetCreature('${c.uid}')"`;
+  const img = c.image?`<img src="${c.image}" alt="${c.name}" />`:`<div style="position:absolute;inset:0;background:linear-gradient(160deg,${isLand(c)?landBg(c):'#3a2010,#1a100a'});display:flex;align-items:center;justify-content:center;font-size:22px">${isLand(c)?landEmoji(c):'⚔️'}</div>`;
+  const stats = isCreature(c)?`<div class="label">${c.name.slice(0,8)} ${c.power}/${c.toughness}</div>`:`<div class="label">${c.name.slice(0,10)}</div>`;
+  return `<div class="battle-card ${tap} ${atk} ${blk} ${sel}" ${click}>${img}${stats}</div>`;
+}
+function handCard(c){
+  const can = canPlayCard(c);
+  const click = can?`onclick="playCard('${c.uid}')"`:'';
+  const img = c.image?`<img src="${c.image}" alt="${c.name}" />`:`<div style="position:absolute;inset:0;background:linear-gradient(160deg,${isLand(c)?landBg(c):'#3a2010,#1a100a'});display:flex;align-items:center;justify-content:center;font-size:22px">${isLand(c)?landEmoji(c):'🂠'}</div>`;
+  return `<div class="battle-card" style="${can?'':'opacity:.45'}" ${click}>${img}<div class="label">${c.name.slice(0,9)}</div></div>`;
+}
+function actionButtons(){
+  if(battle.activePlayer!=='p') return `<button class="btn full" onclick="aiTurn()">▶ Continue</button>`;
+  if(battle.phase==='main') return `<button class="btn full" onclick="goToAttack()">⚔️ Attack</button><button class="btn secondary full" onclick="endTurn()">End Turn</button>`;
+  if(battle.phase==='attack') return `<button class="btn full" onclick="confirmAttackers()">Confirm (${battle.attackers.length})</button><button class="btn secondary" onclick="battle.attackers=[];renderBattle()">Clear</button>`;
+  return `<button class="btn full" onclick="endTurn()">End Turn</button>`;
+}
+
+function canPlayCard(c){
+  if(battle.activePlayer!=='p' || battle.phase!=='main') return false;
+  if(isLand(c)) return battle.p.landsPlayed<1;
+  // Need enough mana of right colors
+  return canPay(c.mana_cost,'p');
+}
+function parseCost(cost){
+  const need = {W:0,U:0,B:0,R:0,G:0,C:0};
+  if(!cost) return need;
+  cost.replace(/\{([^}]+)\}/g,(_,s)=>{
+    if(/^\d+$/.test(s)) need.C += parseInt(s);
+    else if('WUBRG'.includes(s)) need[s]++;
+    return '';
+  });
+  if(!/\{/.test(cost)){
+    cost.split('').forEach(ch=>{ if('WUBRG'.includes(ch)) need[ch]++; else if(/\d/.test(ch)) need.C+=parseInt(ch); });
+  }
+  return need;
+}
+function canPay(cost,p){
+  const need = parseCost(cost);
+  const pool = {...battle[p].mana};
+  for(const k of ['W','U','B','R','G']){ if(need[k]>pool[k]) return false; pool[k]-=need[k]; }
+  const remaining = pool.W+pool.U+pool.B+pool.R+pool.G+pool.C;
+  return remaining >= need.C;
+}
+function payCost(cost,p){
+  const need = parseCost(cost);
+  const pool = battle[p].mana;
+  for(const k of ['W','U','B','R','G']) pool[k]-=need[k];
+  let c = need.C;
+  for(const k of ['C','W','U','B','R','G']){ while(c>0 && pool[k]>0){ pool[k]--; c--; } }
+}
+
+function playCard(uid){
+  const me=battle.p, c = me.hand.find(x=>x.uid===uid); if(!c) return;
+  if(!canPlayCard(c)){ toast('Cannot play'); return; }
+  me.hand = me.hand.filter(x=>x.uid!==uid);
+  if(isLand(c)){ me.landsPlayed++; me.battlefield.push({...c,tapped:false,sickness:false}); pushLog('me','You played '+c.name); }
+  else{ payCost(c.mana_cost,'p');
+    if(isCreature(c)){ me.battlefield.push({...c,tapped:false,sickness:true}); pushLog('me','You cast '+c.name); }
+    else{ // simple instant/sorcery effects
+      pushLog('me','You cast '+c.name);
+      if(/Lightning Bolt/.test(c.name)){ battle.o.life-=3; pushLog('me','Bolt deals 3'); }
+      else if(/Wrath of God/.test(c.name)){ battle.p.battlefield=battle.p.battlefield.filter(x=>!isCreature(x)); battle.o.battlefield=battle.o.battlefield.filter(x=>!isCreature(x)); pushLog('me','All creatures destroyed'); }
+      else if(/Counterspell/.test(c.name)){ pushLog('sys','(Counterspell has no target right now)'); }
+      else if(/Dark Ritual/.test(c.name)){ me.mana.B+=3; }
+      else if(/Giant Growth/.test(c.name)){ pushLog('sys','(no target)'); }
+      me.graveyard.push(c);
+    }
+  }
+  checkWin(); save && save(); renderBattle();
+}
+function tapCreature(uid){
+  const me=battle.p, c=me.battlefield.find(x=>x.uid===uid); if(!c) return;
+  if(isLand(c) && !c.tapped){
+    const col = cardColor(c);
+    if(col==='C') me.mana.C++; else me.mana[col]++;
+    c.tapped=true; renderBattle(); return;
+  }
+  if(isCreature(c) && battle.phase==='attack' && !c.tapped && !c.sickness){
+    if(battle.attackers.includes(uid)) battle.attackers = battle.attackers.filter(x=>x!==uid);
+    else battle.attackers.push(uid);
+    renderBattle();
+  }
+}
+function targetCreature(uid){
+  if(battle.phase!=='block' || !battle.blockingFor) return;
+  battle.blockers[battle.blockingFor] = battle.blockers[battle.blockingFor]||[];
+  // toggle: assign one of our creatures to block this attacker
+  const myUntapped = battle.p.battlefield.find(c=>isCreature(c) && !c.tapped && !Object.values(battle.blockers).flat().includes(c.uid));
+  if(!myUntapped){ toast('No blockers available'); return; }
+  battle.blockers[battle.blockingFor].push(myUntapped.uid);
+  pushLog('me',myUntapped.name+' blocks');
+  renderBattle();
+}
+function goToAttack(){ battle.phase='attack'; battle.attackers=[]; renderBattle(); }
+function confirmAttackers(){
+  if(!battle.attackers.length){ endTurn(); return; }
+  battle.attackers.forEach(uid=>{ const c=battle.p.battlefield.find(x=>x.uid===uid); if(c) c.tapped=true; });
+  // AI blocks
+  battle.blockers={};
+  const opCre = battle.o.battlefield.filter(c=>isCreature(c) && !c.tapped);
+  battle.attackers.forEach(uid=>{
+    const a = battle.p.battlefield.find(x=>x.uid===uid);
+    if(!a) return;
+    const blocker = opCre.find(b=>!Object.values(battle.blockers).flat().includes(b.uid) && (parseInt(b.toughness)||1) > (parseInt(a.power)||1)/2 );
+    if(blocker){ battle.blockers[uid]=[blocker.uid]; pushLog('opp','Opponent blocks with '+blocker.name); }
+  });
+  // Damage
+  battle.attackers.forEach(uid=>{
+    const a=battle.p.battlefield.find(x=>x.uid===uid); if(!a) return;
+    const blks = (battle.blockers[uid]||[]).map(bid=>battle.o.battlefield.find(x=>x.uid===bid)).filter(Boolean);
+    if(!blks.length){ battle.o.life -= parseInt(a.power)||1; pushLog('me',a.name+' deals '+(a.power||1)+' to opponent'); }
+    else{
+      let dmg = parseInt(a.power)||1;
+      blks.forEach(b=>{
+        const bp = parseInt(b.power)||1, bt = parseInt(b.toughness)||1;
+        if(bt<=dmg){ battle.o.battlefield = battle.o.battlefield.filter(x=>x.uid!==b.uid); battle.o.graveyard.push(b); pushLog('me',b.name+' destroyed'); dmg-=bt; }
+        if(bp >= (parseInt(a.toughness)||1)){ battle.p.battlefield = battle.p.battlefield.filter(x=>x.uid!==a.uid); battle.p.graveyard.push(a); pushLog('opp',a.name+' destroyed'); }
+      });
+    }
+  });
+  battle.attackers=[]; battle.blockers={}; battle.phase='main';
+  if(checkWin()) return;
+  renderBattle();
+}
+function endTurn(){
+  battle.p.battlefield.forEach(c=>{ c.sickness=false; });
+  battle.activePlayer='o'; battle.phase='main';
+  pushLog('sys','— Opponent turn —');
+  renderBattle();
+  setTimeout(aiTurn,650);
+}
+function aiTurn(){
+  const op=battle.o;
+  untapAll('o'); op.battlefield.forEach(c=>{ c.sickness=false; });
+  drawCard('o');
+  // Play a land
+  const land = op.hand.find(c=>isLand(c));
+  if(land){ op.hand=op.hand.filter(x=>x!==land); op.landsPlayed++; op.battlefield.push({...land,tapped:false}); pushLog('opp','Opponent plays '+land.name); }
+  // Tap all lands for mana
+  op.battlefield.filter(isLand).forEach(c=>{ if(!c.tapped){ const col=cardColor(c); if(col==='C')op.mana.C++; else op.mana[col]++; c.tapped=true; }});
+  // Cast cheapest creature affordable
+  const playable = op.hand.filter(c=>!isLand(c) && isCreature(c) && canPay(c.mana_cost,'o')).sort((a,b)=>b.cmc-a.cmc);
+  for(const c of playable){
+    if(canPay(c.mana_cost,'o')){ op.hand=op.hand.filter(x=>x!==c); payCost(c.mana_cost,'o'); op.battlefield.push({...c,tapped:false,sickness:true}); pushLog('opp','Opponent casts '+c.name); }
+  }
+  // Attack with everything not summoning-sick
+  const attackers = op.battlefield.filter(c=>isCreature(c) && !c.tapped && !c.sickness);
+  attackers.forEach(a=>a.tapped=true);
+  if(attackers.length){
+    pushLog('opp','Opponent attacks with '+attackers.length);
+    // Player auto-blocks: assign biggest blockers to biggest attackers (simple)
+    const myBlockers = battle.p.battlefield.filter(c=>isCreature(c) && !c.tapped).sort((a,b)=>(parseInt(b.toughness)||1)-(parseInt(a.toughness)||1));
+    const sortedAtk = [...attackers].sort((a,b)=>(parseInt(b.power)||1)-(parseInt(a.power)||1));
+    const blockMap = new Map();
+    sortedAtk.forEach(a=>{ const b = myBlockers.find(b=>!blockMap.has(b.uid) && (parseInt(b.toughness)||1) >= 1); if(b){ blockMap.set(b.uid,a.uid); pushLog('me',b.name+' blocks '+a.name); }});
+    sortedAtk.forEach(a=>{
+      const blockerEntry = [...blockMap.entries()].find(([,aid])=>aid===a.uid);
+      if(!blockerEntry){ battle.p.life -= parseInt(a.power)||1; pushLog('opp',a.name+' deals '+(a.power||1)); }
+      else{
+        const b = battle.p.battlefield.find(x=>x.uid===blockerEntry[0]);
+        const ap=parseInt(a.power)||1, at=parseInt(a.toughness)||1, bp=parseInt(b.power)||1, bt=parseInt(b.toughness)||1;
+        if(ap>=bt){ battle.p.battlefield = battle.p.battlefield.filter(x=>x.uid!==b.uid); battle.p.graveyard.push(b); pushLog('opp',b.name+' destroyed'); }
+        if(bp>=at){ battle.o.battlefield = battle.o.battlefield.filter(x=>x.uid!==a.uid); battle.o.graveyard.push(a); pushLog('me',a.name+' destroyed'); }
+      }
+    });
+  }
+  // End AI turn
+  battle.activePlayer='p'; battle.phase='main'; battle.turn++;
+  untapAll('p'); battle.p.battlefield.forEach(c=>{ c.sickness=false; });
+  drawCard('p');
+  pushLog('sys','— Your turn '+battle.turn+' —');
+  if(checkWin()) return;
+  renderBattle();
+}
+function checkWin(){
+  if(battle.o.life<=0){ openModal('<h2>🏆 Victory!</h2><p>You earned 150 💰</p><button class="btn full" onclick="state.coins+=150;save();closeModal();renderBattleHome()">Continue</button>'); battle=null; return true; }
+  if(battle.p.life<=0){ openModal('<h2>💀 Defeat</h2><p>Better luck next time. +50 💰 consolation.</p><button class="btn full" onclick="state.coins+=50;save();closeModal();renderBattleHome()">Continue</button>'); battle=null; return true; }
+  return false;
+}
+function quitBattle(){ if(confirm('Concede?')){ battle=null; renderBattleHome(); }}
+
+/* ---------- TUTORIAL ---------- */
+const TUT = [
+  { title:'Welcome, Planeswalker', text:'This is MTG Arena Lite — a streamlined Magic experience. You have a starting purse of 1000 💰. Let\'s walk through the basics.' },
+  { title:'🛒 The Shop', text:'Open booster packs to grow your collection. Cards are pulled live from Scryfall, so you get real Magic cards with real art.' },
+  { title:'🎴 Your Collection', text:'Filter by color (W/U/B/R/G). The 5 colors of Magic — White, Blue, Black, Red, Green — each have a personality. Stick to one or two when starting out.' },
+  { title:'📚 Build a Deck', text:'A legal deck is 60 cards. Aim for ~24 lands, ~24 creatures, and ~12 spells. Tap "Auto-build" to have one assembled from your collection.' },
+  { title:'⚔️ Casting Spells', text:'Tap a land in play to add mana. Then tap a card in hand whose mana cost you can pay. Creatures can attack, instants/sorceries do effects.' },
+  { title:'🛡️ Combat', text:'Press Attack to choose attackers (tap creatures with no summoning sickness). The AI blocks automatically — damage is exchanged based on power/toughness.' },
+  { title:'🏆 Win the Game', text:'Reduce your opponent from 20 life to 0. Win 150 💰 per victory, or claim 200 💰ial daily.' },
+  { title:'You\'re Ready!', text:'Open a starter pack from the Shop, then auto-build a deck and challenge the AI. Have fun!' },
+];
+let tutIdx = 0;
+function startTutorial(){ tutIdx=0; showTut(); }
+function showTut(){
+  const t = TUT[tutIdx]; if(!t){ closeTutorial(); return; }
+  $('tutStep').textContent = `Step ${tutIdx+1} / ${TUT.length}`;
+  $('tutTitle').textContent = t.title; $('tutText').textContent = t.text;
+  $('tutNext').textContent = tutIdx===TUT.length-1?'Got it!':'Next →';
+  $('tutorial').classList.add('show');
+}
+function nextTutorial(){ tutIdx++; if(tutIdx>=TUT.length){ closeTutorial(); return; } showTut(); }
+function closeTutorial(){ $('tutorial').classList.remove('show'); }
+
+/* ---------- INIT ---------- */
+load(); renderHome();
+// Pre-warm one set so the shop has data fast
+fetchSet('dmu').catch(()=>{});
+
+// First-launch tutorial
+if(!localStorage.getItem(STORAGE+'-seenTut')){ localStorage.setItem(STORAGE+'-seenTut','1'); setTimeout(startTutorial,400); }
+</script>
+</body>
+</html>
